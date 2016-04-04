@@ -17,12 +17,12 @@
 
 namespace PhpOffice\PhpPresentation\Reader;
 
-use PhpOffice\Common\Microsoft\OLERead;
 use ZipArchive;
 use PhpOffice\Common\XMLReader;
 use PhpOffice\Common\Drawing as CommonDrawing;
+use PhpOffice\Common\Microsoft\OLERead;
 use PhpOffice\PhpPresentation\PhpPresentation;
-use PhpOffice\PhpPresentation\Shape\MemoryDrawing;
+use PhpOffice\PhpPresentation\Shape\Drawing\Gd;
 use PhpOffice\PhpPresentation\Style\Bullet;
 use PhpOffice\PhpPresentation\Style\Color;
 use PhpOffice\PhpPresentation\Writer\PowerPoint2007\LayoutPack\TemplateBased;
@@ -343,7 +343,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
     protected function loadShapeDrawing(XMLReader $document, \DOMElement $node, $baseFile)
     {
         // Core
-        $oShape = new MemoryDrawing();
+        $oShape = new Gd();
         $oShape->getShadow()->setVisible(false);
         // Variables
         $fileRels = 'ppt/slides/_rels/' . $baseFile . '.rels';
