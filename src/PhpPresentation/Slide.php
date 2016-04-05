@@ -86,6 +86,12 @@ class Slide implements ComparableInterface, ShapeContainerInterface
      * @var \PhpOffice\PhpPresentation\Slide\Transition
      */
     private $slideTransition;
+  
+    /**
+     *
+     * @var \PhpOffice\PhpPresentation\Slide\Animation[]
+     */
+    protected $animations = array();
     
     /**
      * Hash index
@@ -538,6 +544,39 @@ class Slide implements ComparableInterface, ShapeContainerInterface
     public function setIsVisible($value = true)
     {
         $this->isVisible = (bool)$value;
+        return $this;
+    }
+
+    /**
+     * Add an animation to the slide
+     *
+     * @param  \PhpOffice\PhpPresentation\Slide\Animation
+     * @return Slide
+     */
+    public function addAnimation($animation)
+    {
+        $this->animations[] = $animation;
+        return $this;
+    }
+
+    /**
+     * Get collection of animations
+     *
+     * @return \PhpOffice\PhpPresentation\Slide\Animation
+     */
+    public function getAnimations()
+    {
+        return $this->animations;
+    }
+
+    /**
+     * Set collection of animations
+     * @param \PhpOffice\PhpPresentation\Slide\Animation[] $array
+     * @return Slide
+     */
+    public function setAnimations(array $array = array())
+    {
+        $this->animations = $array;
         return $this;
     }
 }
