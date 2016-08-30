@@ -569,10 +569,10 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
                         }
                         //} else {
                         // $oText = $oParagraph->createText();
-                    }
 
-                    $oSubSubElement = $document->getElement('a:t', $oSubElement);
-                    $oText->setText($oSubSubElement->nodeValue);
+                        $oSubSubElement = $document->getElement('a:t', $oSubElement);
+                        $oText->setText($oSubSubElement->nodeValue);
+                    }
                 }
             }
         }
