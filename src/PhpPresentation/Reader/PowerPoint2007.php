@@ -17,15 +17,23 @@
 
 namespace PhpOffice\PhpPresentation\Reader;
 
-use ZipArchive;
 use PhpOffice\Common\XMLReader;
 use PhpOffice\Common\Drawing as CommonDrawing;
 use PhpOffice\Common\Microsoft\OLERead;
+use PhpOffice\PhpPresentation\DocumentLayout;
 use PhpOffice\PhpPresentation\PhpPresentation;
+use PhpOffice\PhpPresentation\Shape\RichText\Paragraph;
+use PhpOffice\PhpPresentation\Slide\AbstractSlide;
+use PhpOffice\PhpPresentation\Shape\Placeholder;
+use PhpOffice\PhpPresentation\Slide\Background\Image;
+use PhpOffice\PhpPresentation\Slide\SlideLayout;
+use PhpOffice\PhpPresentation\Slide\SlideMaster;
 use PhpOffice\PhpPresentation\Shape\Drawing\Gd;
 use PhpOffice\PhpPresentation\Style\Bullet;
 use PhpOffice\PhpPresentation\Style\Color;
-use PhpOffice\PhpPresentation\Writer\PowerPoint2007\LayoutPack\TemplateBased;
+use PhpOffice\PhpPresentation\Style\SchemeColor;
+use PhpOffice\PhpPresentation\Style\TextStyle;
+use ZipArchive;
 
 /**
  * Serialized format reader
@@ -43,9 +51,13 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
      */
     protected $oZip;
     /**
-     * @var string[]
+     * @var array[]
      */
     protected $arrayRels = array();
+    /**
+     * @var SlideLayout[]
+     */
+    protected $arraySlideLayouts = array();
     /*
      * @var string
      */
@@ -124,6 +136,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
     {
         $this->oPhpPresentation = new PhpPresentation();
         $this->oPhpPresentation->removeSlideByIndex();
+        $this->oPhpPresentation->setAllMasterSlides(array());
         $this->filename = $pFilename;
 
         $this->oZip = new ZipArchive();
@@ -150,10 +163,35 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
 
         $pptPresentation = $this->oZip->getFromName('ppt/presentation.xml');
         if ($pptPresentation !== false) {
+            $this->loadDocumentLayout($pptPresentation);
             $this->loadSlides($pptPresentation);
         }
 
         return $this->oPhpPresentation;
+    }
+
+    /**
+     * Read Document Layout
+     * @param $sPart
+     */
+    protected function loadDocumentLayout($sPart)
+    {
+        $xmlReader = new XMLReader();
+        if ($xmlReader->getDomFromString($sPart)) {
+            foreach ($xmlReader->getElements('/p:presentation/p:sldSz') as $oElement) {
+                $type = $oElement->getAttribute('type');
+                $oLayout = $this->oPhpPresentation->getLayout();
+                if ($type == DocumentLayout::LAYOUT_CUSTOM) {
+                    $oLayout->setCX($oElement->getAttribute('cx'));
+                    $oLayout->setCY($oElement->getAttribute('cy'));
+                } else {
+                    $oLayout->setDocumentLayout($type, true);
+                    if ($oElement->getAttribute('cx') < $oElement->getAttribute('cy')) {
+                        $oLayout->setDocumentLayout($type, false);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -175,7 +213,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
                 '/cp:coreProperties/dcterms:created' => 'setCreated',
                 '/cp:coreProperties/dcterms:modified' => 'setModified',
             );
-            $oProperties = $this->oPhpPresentation->getProperties();
+            $oProperties = $this->oPhpPresentation->getDocumentProperties();
             foreach ($arrayProperties as $path => $property) {
                 if (is_object($oElement = $xmlReader->getElement($path))) {
                     if ($oElement->hasAttribute('xsi:type') && $oElement->getAttribute('xsi:type') == 'dcterms:W3CDTF') {
@@ -197,13 +235,12 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
     protected function loadCustomProperties($sPart)
     {
         $xmlReader = new XMLReader();
-        $sPart = str_replace(' xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"', '',
-            $sPart);
+        $sPart = str_replace(' xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"', '', $sPart);
         if ($xmlReader->getDomFromString($sPart)) {
             $pathMarkAsFinal = '/Properties/property[@pid="2"][@fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}"][@name="_MarkAsFinal"]/vt:bool';
             if (is_object($oElement = $xmlReader->getElement($pathMarkAsFinal))) {
                 if ($oElement->nodeValue == 'true') {
-                    $this->oPhpPresentation->markAsFinal(true);
+                    $this->oPhpPresentation->getPresentationProperties()->markAsFinal(true);
                 }
             }
         }
@@ -220,7 +257,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
             $pathZoom = '/p:viewPr/p:slideViewPr/p:cSldViewPr/p:cViewPr/p:scale/a:sx';
             if (is_object($oElement = $xmlReader->getElement($pathZoom))) {
                 if ($oElement->hasAttribute('d') && $oElement->hasAttribute('n')) {
-                    $this->oPhpPresentation->setZoom($oElement->getAttribute('n') / $oElement->getAttribute('d'));
+                    $this->oPhpPresentation->getPresentationProperties()->setZoom($oElement->getAttribute('n') / $oElement->getAttribute('d'));
                 }
             }
         }
@@ -235,6 +272,9 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
         if ($xmlReader->getDomFromString($sPart)) {
             $fileRels = 'ppt/_rels/presentation.xml.rels';
             $this->loadRels($fileRels);
+            // Load the Masterslides
+            $this->loadMasterSlides($xmlReader, $fileRels);
+            // Continue with loading the slides
             foreach ($xmlReader->getElements('/p:presentation/p:sldIdLst/p:sldId') as $oElement) {
                 $rId = $oElement->getAttribute('r:id');
                 $pathSlide = isset($this->arrayRels[$fileRels][$rId]) ? $this->arrayRels[$fileRels][$rId]['Target'] : '';
@@ -250,6 +290,29 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
     }
 
     /**
+     * Extract all MasterSlides
+     * @param XMLReader $xmlReader
+     * @param $fileRels
+     */
+    protected function loadMasterSlides(XMLReader $xmlReader, $fileRels)
+    {
+        // Get all the MasterSlide Id's from the presentation.xml file
+        foreach ($xmlReader->getElements('/p:presentation/p:sldMasterIdLst/p:sldMasterId') as $oElement) {
+            $rId = $oElement->getAttribute('r:id');
+            // Get the path to the masterslide from the array with _rels files
+            $pathMasterSlide = isset($this->arrayRels[$fileRels][$rId]) ?
+                $this->arrayRels[$fileRels][$rId]['Target'] : '';
+            if (!empty($pathMasterSlide)) {
+                $pptMasterSlide = $this->oZip->getFromName('ppt/' . $pathMasterSlide);
+                if ($pptMasterSlide !== false) {
+                    $this->loadRels('ppt/slideMasters/_rels/' . basename($pathMasterSlide) . '.rels');
+                    $this->loadMasterSlide($pptMasterSlide, basename($pathMasterSlide));
+                }
+            }
+        }
+    }
+
+    /**
      * Extract data from slide
      * @param string $sPart
      * @param string $baseFile
@@ -259,8 +322,9 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
         $xmlReader = new XMLReader();
         if ($xmlReader->getDomFromString($sPart)) {
             // Core
-            $this->oPhpPresentation->createSlide();
+            $oSlide = $this->oPhpPresentation->createSlide();
             $this->oPhpPresentation->setActiveSlideIndex($this->oPhpPresentation->getSlideCount() - 1);
+            $oSlide->setRelsIndex('ppt/slides/_rels/' . $baseFile . '.rels');
 
             // Background
             $oElement = $xmlReader->getElement('/p:sld/p:cSld/p:bg/p:bgPr');
@@ -296,7 +360,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
                         $tmpBkgImg = tempnam(sys_get_temp_dir(), 'PhpPresentationReaderPpt2007Bkg');
                         file_put_contents($tmpBkgImg, $contentImg);
                         // Background
-                        $oBackground = new \PhpOffice\PhpPresentation\Slide\Background\Image();
+                        $oBackground = new Image();
                         $oBackground->setPath($tmpBkgImg);
                         // Slide Background
                         $oSlide = $this->oPhpPresentation->getActiveSlide();
@@ -309,27 +373,286 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
             foreach ($xmlReader->getElements('/p:sld/p:cSld/p:spTree/*') as $oNode) {
                 switch ($oNode->tagName) {
                     case 'p:pic':
-                        $this->loadShapeDrawing($xmlReader, $oNode, $baseFile);
+                        $this->loadShapeDrawing($xmlReader, $oNode, $oSlide);
                         break;
                     case 'p:sp':
-                        $this->loadShapeRichText($xmlReader, $oNode, $baseFile);
+                        $this->loadShapeRichText($xmlReader, $oNode, $oSlide);
                         break;
                     default:
                         //var_export($oNode->tagName);
                 }
             }
             // Layout
-            $oLayoutPack = new TemplateBased($this->filename);
             $oSlide = $this->oPhpPresentation->getActiveSlide();
             foreach ($this->arrayRels['ppt/slides/_rels/' . $baseFile . '.rels'] as $valueRel) {
                 if ($valueRel['Type'] == 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout') {
-                    $layoutId = $valueRel['Target'];
-                    $layoutId = str_replace('../slideLayouts/slideLayout', '', $layoutId);
-                    $layoutId = str_replace('.xml', '', $layoutId);
-                    $layoutName = $oLayoutPack->findLayoutName((int)$layoutId, $oSlide->getSlideMasterId());
-                    $oSlide->setSlideLayout($layoutName);
+                    $layoutBasename = basename($valueRel['Target']);
+                    if (array_key_exists($layoutBasename, $this->arraySlideLayouts)) {
+                        $oSlide->setSlideLayout($this->arraySlideLayouts[$layoutBasename]);
+                    }
                     break;
                 }
+            }
+        }
+    }
+
+    private function loadMasterSlide($sPart, $baseFile)
+    {
+        $xmlReader = new XMLReader();
+        if ($xmlReader->getDomFromString($sPart)) {
+            // Core
+            $oSlideMaster = $this->oPhpPresentation->createMasterSlide();
+            $oSlideMaster->setTextStyles(new TextStyle(false));
+            $oSlideMaster->setRelsIndex('ppt/slideMasters/_rels/' . $baseFile . '.rels');
+
+            // Background
+            $oElement = $xmlReader->getElement('/p:sldMaster/p:cSld/p:bg');
+            if ($oElement) {
+                $this->loadSlideBackground($xmlReader, $oElement, $oSlideMaster);
+            }
+
+            // Shapes
+            $arrayElements = $xmlReader->getElements('/p:sldMaster/p:cSld/p:spTree/*');
+            if ($arrayElements) {
+                $this->loadSlideShapes($oSlideMaster, $arrayElements, $xmlReader);
+            }
+            // Header & Footer
+
+            // ColorMapping
+            $colorMap = array();
+            $oElement = $xmlReader->getElement('/p:sldMaster/p:clrMap');
+            if ($oElement->hasAttributes()) {
+                foreach ($oElement->attributes as $attr) {
+                    $colorMap[$attr->nodeName] = $attr->nodeValue;
+                }
+                $oSlideMaster->colorMap->setMapping($colorMap);
+            }
+
+            // TextStyles
+            $arrayElementTxStyles = $xmlReader->getElements('/p:sldMaster/p:txStyles/*');
+            if ($arrayElementTxStyles) {
+                foreach ($arrayElementTxStyles as $oElementTxStyle) {
+                    $arrayElementsLvl = $xmlReader->getElements('/p:sldMaster/p:txStyles/'.$oElementTxStyle->nodeName.'/*');
+                    foreach ($arrayElementsLvl as $oElementLvl) {
+                        if ($oElementLvl->nodeName == 'a:extLst') {
+                            continue;
+                        }
+                        $oRTParagraph = new Paragraph();
+
+                        if ($oElementLvl->nodeName == 'a:defPPr') {
+                            $level = 0;
+                        } else {
+                            $level = str_replace('a:lvl', '', $oElementLvl->nodeName);
+                            $level = str_replace('pPr', '', $level);
+                        }
+
+                        if ($oElementLvl->hasAttribute('algn')) {
+                            $oRTParagraph->getAlignment()->setHorizontal($oElementLvl->getAttribute('algn'));
+                        }
+                        if ($oElementLvl->hasAttribute('marL')) {
+                            $val = $oElementLvl->getAttribute('marL');
+                            $val = CommonDrawing::emuToPixels($val);
+                            $oRTParagraph->getAlignment()->setMarginLeft($val);
+                        }
+                        if ($oElementLvl->hasAttribute('marR')) {
+                            $val = $oElementLvl->getAttribute('marR');
+                            $val = CommonDrawing::emuToPixels($val);
+                            $oRTParagraph->getAlignment()->setMarginRight($val);
+                        }
+                        if ($oElementLvl->hasAttribute('indent')) {
+                            $val = $oElementLvl->getAttribute('indent');
+                            $val = CommonDrawing::emuToPixels($val);
+                            $oRTParagraph->getAlignment()->setIndent($val);
+                        }
+                        $oElementLvlDefRPR = $xmlReader->getElement('a:defRPr', $oElementLvl);
+                        if ($oElementLvlDefRPR) {
+                            if ($oElementLvlDefRPR->hasAttribute('sz')) {
+                                $oRTParagraph->getFont()->setSize($oElementLvlDefRPR->getAttribute('sz') / 100);
+                            }
+                            if ($oElementLvlDefRPR->hasAttribute('b') && $oElementLvlDefRPR->getAttribute('b') == 1) {
+                                $oRTParagraph->getFont()->setBold(true);
+                            }
+                            if ($oElementLvlDefRPR->hasAttribute('i') && $oElementLvlDefRPR->getAttribute('i') == 1) {
+                                $oRTParagraph->getFont()->setItalic(true);
+                            }
+                        }
+                        $oElementSchemeColor = $xmlReader->getElement('a:defRPr/a:solidFill/a:schemeClr', $oElementLvl);
+                        if ($oElementSchemeColor) {
+                            if ($oElementSchemeColor->hasAttribute('val')) {
+                                $oRTParagraph->getFont()->setColor(new SchemeColor())->getColor()->setValue($oElementSchemeColor->getAttribute('val'));
+                            }
+                        }
+
+                        switch ($oElementTxStyle->nodeName) {
+                            case 'p:bodyStyle':
+                                $oSlideMaster->getTextStyles()->setBodyStyleAtLvl($oRTParagraph, $level);
+                                break;
+                            case 'p:otherStyle':
+                                $oSlideMaster->getTextStyles()->setOtherStyleAtLvl($oRTParagraph, $level);
+                                break;
+                            case 'p:titleStyle':
+                                $oSlideMaster->getTextStyles()->setTitleStyleAtLvl($oRTParagraph, $level);
+                                break;
+                        }
+                    }
+                }
+            }
+
+            // Load the theme
+            foreach ($this->arrayRels[$oSlideMaster->getRelsIndex()] as $arrayRel) {
+                if ($arrayRel['Type'] == 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme') {
+                    $pptTheme = $this->oZip->getFromName('ppt/' . substr($arrayRel['Target'], strrpos($arrayRel['Target'], '../') + 3));
+                    if ($pptTheme !== false) {
+                        $this->loadTheme($pptTheme, $oSlideMaster);
+                    }
+                    break;
+                }
+            }
+
+            // Load the Layoutslide
+            foreach ($xmlReader->getElements('/p:sldMaster/p:sldLayoutIdLst/p:sldLayoutId') as $oElement) {
+                $rId = $oElement->getAttribute('r:id');
+                // Get the path to the masterslide from the array with _rels files
+                $pathLayoutSlide = isset($this->arrayRels[$oSlideMaster->getRelsIndex()][$rId]) ?
+                    $this->arrayRels[$oSlideMaster->getRelsIndex()][$rId]['Target'] : '';
+                if (!empty($pathLayoutSlide)) {
+                    $pptLayoutSlide = $this->oZip->getFromName('ppt/' . substr($pathLayoutSlide, strrpos($pathLayoutSlide, '../') + 3));
+                    if ($pptLayoutSlide !== false) {
+                        $this->loadRels('ppt/slideLayouts/_rels/' . basename($pathLayoutSlide) . '.rels');
+                        $oSlideMaster->addSlideLayout(
+                            $this->loadLayoutSlide($pptLayoutSlide, basename($pathLayoutSlide), $oSlideMaster)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    private function loadLayoutSlide($sPart, $baseFile, SlideMaster $oSlideMaster)
+    {
+        $xmlReader = new XMLReader();
+        if ($xmlReader->getDomFromString($sPart)) {
+            // Core
+            $oSlideLayout = new SlideLayout($oSlideMaster);
+            $oSlideLayout->setRelsIndex('ppt/slideLayouts/_rels/' . $baseFile . '.rels');
+
+            // Name
+            $oElement = $xmlReader->getElement('/p:sldLayout/p:cSld');
+            if ($oElement && $oElement->hasAttribute('name')) {
+                $oSlideLayout->setLayoutName($oElement->getAttribute('name'));
+            }
+
+            // Background
+            $oElement = $xmlReader->getElement('/p:sldLayout/p:cSld/p:bg');
+            if ($oElement) {
+                $this->loadSlideBackground($xmlReader, $oElement, $oSlideLayout);
+            }
+
+            // ColorMapping
+            $oElement = $xmlReader->getElement('/p:sldLayout/p:clrMapOvr/a:overrideClrMapping');
+            if ($oElement && $oElement->hasAttributes()) {
+                $colorMap = array();
+                foreach ($oElement->attributes as $attr) {
+                    $colorMap[$attr->nodeName] = $attr->nodeValue;
+                }
+                $oSlideLayout->colorMap->setMapping($colorMap);
+            }
+
+            // Shapes
+            $oElements = $xmlReader->getElements('/p:sldLayout/p:cSld/p:spTree/*');
+            if ($oElements) {
+                $this->loadSlideShapes($oSlideLayout, $oElements, $xmlReader);
+            }
+            $this->arraySlideLayouts[$baseFile] = &$oSlideLayout;
+            return $oSlideLayout;
+        }
+        return null;
+    }
+
+    /**
+     * @param string $sPart
+     * @param SlideMaster $oSlideMaster
+     */
+    private function loadTheme($sPart, SlideMaster $oSlideMaster)
+    {
+        $xmlReader = new XMLReader();
+        if ($xmlReader->getDomFromString($sPart)) {
+            $oElements = $xmlReader->getElements('/a:theme/a:themeElements/a:clrScheme/*');
+            if ($oElements) {
+                foreach ($oElements as $oElement) {
+                    $oSchemeColor = new SchemeColor();
+                    $oSchemeColor->setValue(str_replace('a:', '', $oElement->tagName));
+                    $colorElement = $xmlReader->getElement('*', $oElement);
+                    if ($colorElement) {
+                        if ($colorElement->hasAttribute('lastClr')) {
+                            $oSchemeColor->setRGB($colorElement->getAttribute('lastClr'));
+                        } elseif ($colorElement->hasAttribute('val')) {
+                            $oSchemeColor->setRGB($colorElement->getAttribute('val'));
+                        }
+                    }
+                    $oSlideMaster->addSchemeColor($oSchemeColor);
+                }
+            }
+        }
+    }
+
+    /**
+     * @param XMLReader $xmlReader
+     * @param \DOMElement $oElement
+     * @param AbstractSlide $oSlide
+     */
+    private function loadSlideBackground(XMLReader $xmlReader, \DOMElement $oElement, AbstractSlide $oSlide)
+    {
+        // Background color
+        $oElementColor = $xmlReader->getElement('p:bgPr/a:solidFill/a:srgbClr', $oElement);
+        if ($oElementColor) {
+            // Color
+            $oColor = new Color();
+            $oColor->setRGB($oElementColor->hasAttribute('val') ? $oElementColor->getAttribute('val') : null);
+            // Background
+            $oBackground = new \PhpOffice\PhpPresentation\Slide\Background\Color();
+            $oBackground->setColor($oColor);
+            // Slide Background
+            $oSlide->setBackground($oBackground);
+        }
+
+        // Background scheme color
+        $oElementSchemeColor = $xmlReader->getElement('p:bgRef/a:schemeClr', $oElement);
+        if ($oElementSchemeColor) {
+            // Color
+            $oColor = new SchemeColor();
+            $oColor->setValue($oElementSchemeColor->hasAttribute('val') ? $oElementSchemeColor->getAttribute('val') : null);
+            // Background
+            $oBackground = new \PhpOffice\PhpPresentation\Slide\Background\SchemeColor();
+            $oBackground->setSchemeColor($oColor);
+            // Slide Background
+            $oSlide->setBackground($oBackground);
+        }
+
+        // Background image
+        $oElementImage = $xmlReader->getElement('p:bgPr/a:blipFill/a:blip', $oElement);
+        if ($oElementImage) {
+            $relImg = $this->arrayRels[$oSlide->getRelsIndex()][$oElementImage->getAttribute('r:embed')];
+            if (is_array($relImg)) {
+                // File
+                $pathImage = 'ppt/slides/' . $relImg['Target'];
+                $pathImage = explode('/', $pathImage);
+                foreach ($pathImage as $key => $partPath) {
+                    if ($partPath == '..') {
+                        unset($pathImage[$key - 1]);
+                        unset($pathImage[$key]);
+                    }
+                }
+                $pathImage = implode('/', $pathImage);
+                $contentImg = $this->oZip->getFromName($pathImage);
+
+                $tmpBkgImg = tempnam(sys_get_temp_dir(), 'PhpPresentationReaderPpt2007Bkg');
+                file_put_contents($tmpBkgImg, $contentImg);
+                // Background
+                $oBackground = new Image();
+                $oBackground->setPath($tmpBkgImg);
+                // Slide Background
+                $oSlide->setBackground($oBackground);
             }
         }
     }
@@ -338,15 +661,15 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
      *
      * @param XMLReader $document
      * @param \DOMElement $node
-     * @param string $baseFile
+     * @param AbstractSlide $oSlide
      */
-    protected function loadShapeDrawing(XMLReader $document, \DOMElement $node, $baseFile)
+    protected function loadShapeDrawing(XMLReader $document, \DOMElement $node, AbstractSlide $oSlide)
     {
         // Core
         $oShape = new Gd();
         $oShape->getShadow()->setVisible(false);
         // Variables
-        $fileRels = 'ppt/slides/_rels/' . $baseFile . '.rels';
+        $fileRels = $oSlide->getRelsIndex();
 
         $oElement = $document->getElement('p:nvPicPr/p:cNvPr', $node);
         if ($oElement) {
@@ -437,16 +760,22 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
             }
         }
 
-        $this->oPhpPresentation->getActiveSlide()->addShape($oShape);
+        $oSlide->addShape($oShape);
     }
 
-    protected function loadShapeRichText(XMLReader $document, \DOMElement $node, $baseFile)
+    /**
+     * @param XMLReader $document
+     * @param \DOMElement $node
+     * @param AbstractSlide $oSlide
+     * @throws \Exception
+     */
+    protected function loadShapeRichText(XMLReader $document, \DOMElement $node, AbstractSlide $oSlide)
     {
         // Core
-        $oShape = $this->oPhpPresentation->getActiveSlide()->createRichTextShape();
+        $oShape = $oSlide->createRichTextShape();
         $oShape->setParagraphs(array());
         // Variables
-        $fileRels = 'ppt/slides/_rels/' . $baseFile . '.rels';
+        $fileRels = $oSlide->getRelsIndex();
 
         $oElement = $document->getElement('p:spPr/a:xfrm', $node);
         if ($oElement && $oElement->hasAttribute('rot')) {
@@ -470,6 +799,14 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
             }
             if ($oElement->hasAttribute('cy')) {
                 $oShape->setHeight(CommonDrawing::emuToPixels($oElement->getAttribute('cy')));
+            }
+        }
+
+        $oElement = $document->getElement('p:nvSpPr/p:nvPr/p:ph', $node);
+        if ($oElement) {
+            if ($oElement->hasAttribute('type')) {
+                $placeholder = new Placeholder($oElement->getAttribute('type'));
+                $oShape->setPlaceHolder($placeholder);
             }
         }
 
@@ -500,8 +837,9 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
                     $oParagraph->getAlignment()->setLevel($oSubElement->getAttribute('lvl'));
                 }
 
-                $oElementBuFont = $document->getElement('a:buFont', $oSubElement);
                 $oParagraph->getBulletStyle()->setBulletType(Bullet::TYPE_NONE);
+
+                $oElementBuFont = $document->getElement('a:buFont', $oSubElement);
                 if ($oElementBuFont) {
                     if ($oElementBuFont->hasAttribute('typeface')) {
                         $oParagraph->getBulletStyle()->setBulletFont($oElementBuFont->getAttribute('typeface'));
@@ -514,7 +852,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
                         $oParagraph->getBulletStyle()->setBulletChar($oElementBuChar->getAttribute('char'));
                     }
                 }
-                /*$oElementBuAutoNum = $document->getElement('a:buAutoNum', $oSubElement);
+                $oElementBuAutoNum = $document->getElement('a:buAutoNum', $oSubElement);
                 if ($oElementBuAutoNum) {
                     $oParagraph->getBulletStyle()->setBulletType(Bullet::TYPE_NUMERIC);
                     if ($oElementBuAutoNum->hasAttribute('type')) {
@@ -523,7 +861,19 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
                     if ($oElementBuAutoNum->hasAttribute('startAt') && $oElementBuAutoNum->getAttribute('startAt') != 1) {
                         $oParagraph->getBulletStyle()->setBulletNumericStartAt($oElementBuAutoNum->getAttribute('startAt'));
                     }
-                }*/
+                }
+                $oElementBuClr = $document->getElement('a:buClr', $oSubElement);
+                if ($oElementBuClr) {
+                    $oColor = new Color();
+                    /**
+                     * @todo Create protected for reading Color
+                     */
+                    $oElementColor = $document->getElement('a:srgbClr', $oElementBuClr);
+                    if ($oElementColor) {
+                        $oColor->setRGB($oElementColor->hasAttribute('val') ? $oElementColor->getAttribute('val') : null);
+                    }
+                    $oParagraph->getBulletStyle()->setBulletColor($oColor);
+                }
             }
             $arraySubElements = $document->getElements('(a:r|a:br)', $oElement);
             foreach ($arraySubElements as $oSubElement) {
@@ -599,6 +949,28 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
                         'Type' => $oNode->getAttribute('Type'),
                     );
                 }
+            }
+        }
+    }
+
+    /**
+     * @param $oSlide
+     * @param $oElements
+     * @param $xmlReader
+     * @internal param $baseFile
+     */
+    private function loadSlideShapes($oSlide, $oElements, $xmlReader)
+    {
+        foreach ($oElements as $oNode) {
+            switch ($oNode->tagName) {
+                case 'p:pic':
+                    $this->loadShapeDrawing($xmlReader, $oNode, $oSlide);
+                    break;
+                case 'p:sp':
+                    $this->loadShapeRichText($xmlReader, $oNode, $oSlide);
+                    break;
+                default:
+                    //var_export($oNode->tagName);
             }
         }
     }

@@ -10,7 +10,6 @@ use PhpOffice\PhpPresentation\PhpPresentation;
 use PhpOffice\PhpPresentation\AbstractShape;
 use PhpOffice\PhpPresentation\DocumentLayout;
 use PhpOffice\PhpPresentation\Shape\Drawing;
-use PhpOffice\PhpPresentation\Shape\MemoryDrawing;
 use PhpOffice\PhpPresentation\Shape\RichText;
 use PhpOffice\PhpPresentation\Shape\RichText\BreakElement;
 use PhpOffice\PhpPresentation\Shape\RichText\TextElement;
@@ -288,19 +287,20 @@ class PhpPptTree
     {
         $this->append('<div class="infoBlk" id="divPhpPresentationInfo">');
         $this->append('<dl>');
-        $this->append('<dt>Number of slides</dt><dd>' . $oPHPPpt->getSlideCount() . '</dd>');
-        $this->append('<dt>Document Layout Height</dt><dd>' . $oPHPPpt->getLayout()->getCY(DocumentLayout::UNIT_MILLIMETER) . ' mm</dd>');
-        $this->append('<dt>Document Layout Width</dt><dd>' . $oPHPPpt->getLayout()->getCX(DocumentLayout::UNIT_MILLIMETER) . ' mm</dd>');
-        $this->append('<dt>Properties : Category</dt><dd>' . $oPHPPpt->getProperties()->getCategory() . '</dd>');
-        $this->append('<dt>Properties : Company</dt><dd>' . $oPHPPpt->getProperties()->getCompany() . '</dd>');
-        $this->append('<dt>Properties : Created</dt><dd>' . $oPHPPpt->getProperties()->getCreated() . '</dd>');
-        $this->append('<dt>Properties : Creator</dt><dd>' . $oPHPPpt->getProperties()->getCreator() . '</dd>');
-        $this->append('<dt>Properties : Description</dt><dd>' . $oPHPPpt->getProperties()->getDescription() . '</dd>');
-        $this->append('<dt>Properties : Keywords</dt><dd>' . $oPHPPpt->getProperties()->getKeywords() . '</dd>');
-        $this->append('<dt>Properties : Last Modified By</dt><dd>' . $oPHPPpt->getProperties()->getLastModifiedBy() . '</dd>');
-        $this->append('<dt>Properties : Modified</dt><dd>' . $oPHPPpt->getProperties()->getModified() . '</dd>');
-        $this->append('<dt>Properties : Subject</dt><dd>' . $oPHPPpt->getProperties()->getSubject() . '</dd>');
-        $this->append('<dt>Properties : Title</dt><dd>' . $oPHPPpt->getProperties()->getTitle() . '</dd>');
+        $this->append('<dt>Number of slides</dt><dd>'.$oPHPPpt->getSlideCount().'</dd>');
+        $this->append('<dt>Document Layout Name</dt><dd>'.(empty($oPHPPpt->getLayout()->getDocumentLayout()) ? 'Custom' : $oPHPPpt->getLayout()->getDocumentLayout()).'</dd>');
+        $this->append('<dt>Document Layout Height</dt><dd>'.$oPHPPpt->getLayout()->getCY(DocumentLayout::UNIT_MILLIMETER).' mm</dd>');
+        $this->append('<dt>Document Layout Width</dt><dd>'.$oPHPPpt->getLayout()->getCX(DocumentLayout::UNIT_MILLIMETER).' mm</dd>');
+        $this->append('<dt>Properties : Category</dt><dd>'.$oPHPPpt->getDocumentProperties()->getCategory().'</dd>');
+        $this->append('<dt>Properties : Company</dt><dd>'.$oPHPPpt->getDocumentProperties()->getCompany().'</dd>');
+        $this->append('<dt>Properties : Created</dt><dd>'.$oPHPPpt->getDocumentProperties()->getCreated().'</dd>');
+        $this->append('<dt>Properties : Creator</dt><dd>'.$oPHPPpt->getDocumentProperties()->getCreator().'</dd>');
+        $this->append('<dt>Properties : Description</dt><dd>'.$oPHPPpt->getDocumentProperties()->getDescription().'</dd>');
+        $this->append('<dt>Properties : Keywords</dt><dd>'.$oPHPPpt->getDocumentProperties()->getKeywords().'</dd>');
+        $this->append('<dt>Properties : Last Modified By</dt><dd>'.$oPHPPpt->getDocumentProperties()->getLastModifiedBy().'</dd>');
+        $this->append('<dt>Properties : Modified</dt><dd>'.$oPHPPpt->getDocumentProperties()->getModified().'</dd>');
+        $this->append('<dt>Properties : Subject</dt><dd>'.$oPHPPpt->getDocumentProperties()->getSubject().'</dd>');
+        $this->append('<dt>Properties : Title</dt><dd>'.$oPHPPpt->getDocumentProperties()->getTitle().'</dd>');
         $this->append('</dl>');
         $this->append('</div>');
 
@@ -369,9 +369,10 @@ class PhpPptTree
         $this->append('<dt>Hyperlink</dt><dd>' . ucfirst(var_export($oShape->hasHyperlink(), true)) . '</dd>');
         $this->append('<dt>Fill</dt><dd>@Todo</dd>');
         $this->append('<dt>Border</dt><dd>@Todo</dd>');
-        if ($oShape instanceof MemoryDrawing) {
-            $this->append('<dt>Name</dt><dd>' . $oShape->getName() . '</dd>');
-            $this->append('<dt>Description</dt><dd>' . $oShape->getDescription() . '</dd>');
+        $this->append('<dt>IsPlaceholder</dt><dd>' . ($oShape->isPlaceholder() ? 'true' : 'false') . '</dd>');
+        if($oShape instanceof Drawing\Gd) {
+            $this->append('<dt>Name</dt><dd>'.$oShape->getName().'</dd>');
+            $this->append('<dt>Description</dt><dd>'.$oShape->getDescription().'</dd>');
             ob_start();
             call_user_func($oShape->getRenderingFunction(), $oShape->getImageResource());
             $sShapeImgContents = ob_get_contents();
@@ -388,16 +389,16 @@ class PhpPptTree
             $this->append('<dd>');
             foreach ($oShape->getParagraphs() as $oParagraph) {
                 $this->append('Paragraph<dl>');
-                $this->append('<dt>Alignment Horizontal</dt><dd> Alignment::' . $this->getConstantName('\PhpOffice\PhpPresentation\Style\Alignment',
-                        $oParagraph->getAlignment()->getHorizontal()) . '</dd>');
-                $this->append('<dt>Alignment Vertical</dt><dd> Alignment::' . $this->getConstantName('\PhpOffice\PhpPresentation\Style\Alignment',
-                        $oParagraph->getAlignment()->getVertical()) . '</dd>');
-                $this->append('<dt>Alignment Margin (L / R)</dt><dd>' . $oParagraph->getAlignment()->getMarginLeft() . ' px / ' . $oParagraph->getAlignment()->getMarginRight() . 'px</dd>');
-                $this->append('<dt>Alignment Indent</dt><dd>' . $oParagraph->getAlignment()->getIndent() . ' px</dd>');
-                $this->append('<dt>Alignment Level</dt><dd>' . $oParagraph->getAlignment()->getLevel() . '</dd>');
-                $this->append('<dt>Bullet Style</dt><dd> Bullet::' . $this->getConstantName('\PhpOffice\PhpPresentation\Style\Bullet',
-                        $oParagraph->getBulletStyle()->getBulletType()) . '</dd>');
-                $this->append('<dt>Bullet Font</dt><dd>' . $oParagraph->getBulletStyle()->getBulletFont() . '</dd>');
+                $this->append('<dt>Alignment Horizontal</dt><dd> Alignment::'.$this->getConstantName('\PhpOffice\PhpPresentation\Style\Alignment', $oParagraph->getAlignment()->getHorizontal()).'</dd>');
+                $this->append('<dt>Alignment Vertical</dt><dd> Alignment::'.$this->getConstantName('\PhpOffice\PhpPresentation\Style\Alignment', $oParagraph->getAlignment()->getVertical()).'</dd>');
+                $this->append('<dt>Alignment Margin (L / R)</dt><dd>'.$oParagraph->getAlignment()->getMarginLeft().' px / '.$oParagraph->getAlignment()->getMarginRight().'px</dd>');
+                $this->append('<dt>Alignment Indent</dt><dd>'.$oParagraph->getAlignment()->getIndent().' px</dd>');
+                $this->append('<dt>Alignment Level</dt><dd>'.$oParagraph->getAlignment()->getLevel().'</dd>');
+                $this->append('<dt>Bullet Style</dt><dd> Bullet::'.$this->getConstantName('\PhpOffice\PhpPresentation\Style\Bullet', $oParagraph->getBulletStyle()->getBulletType()).'</dd>');
+                if ($oParagraph->getBulletStyle()->getBulletType() != Bullet::TYPE_NONE) {
+                    $this->append('<dt>Bullet Font</dt><dd>' . $oParagraph->getBulletStyle()->getBulletFont() . '</dd>');
+                    $this->append('<dt>Bullet Color</dt><dd>' . $oParagraph->getBulletStyle()->getBulletColor()->getARGB() . '</dd>');
+                }
                 if ($oParagraph->getBulletStyle()->getBulletType() == Bullet::TYPE_BULLET) {
                     $this->append('<dt>Bullet Char</dt><dd>' . $oParagraph->getBulletStyle()->getBulletChar() . '</dd>');
                 }
@@ -405,6 +406,7 @@ class PhpPptTree
                     $this->append('<dt>Bullet Start At</dt><dd>' . $oParagraph->getBulletStyle()->getBulletNumericStartAt() . '</dd>');
                     $this->append('<dt>Bullet Style</dt><dd>' . $oParagraph->getBulletStyle()->getBulletNumericStyle() . '</dd>');
                 }
+                $this->append('<dt>Line Spacing</dt><dd>'.$oParagraph->getLineSpacing().'</dd>');
                 $this->append('<dt>RichText</dt><dd><dl>');
                 foreach ($oParagraph->getRichTextElements() as $oRichText) {
                     if ($oRichText instanceof BreakElement) {
