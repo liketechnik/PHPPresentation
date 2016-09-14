@@ -20,6 +20,7 @@ use PhpOffice\Common\Drawing as CommonDrawing;
 use PhpOffice\Common\Text;
 use PhpOffice\Common\XMLWriter;
 use PhpOffice\PhpPresentation\Shape\AbstractGraphic;
+use PhpOffice\PhpPresentation\Shape\AutoShape;
 use PhpOffice\PhpPresentation\Shape\Chart as ShapeChart;
 use PhpOffice\PhpPresentation\Shape\Comment;
 use PhpOffice\PhpPresentation\Shape\Drawing\Gd as ShapeDrawingGd;
@@ -136,6 +137,8 @@ abstract class AbstractSlide extends AbstractDecoratorWriter
                 $this->writeShapeChart($objWriter, $shape, $shapeId);
             } elseif ($shape instanceof AbstractGraphic) {
                 $this->writeShapePic($objWriter, $shape, $shapeId);
+            } elseif ($shape instanceof AutoShape) {
+                $this->writeShapeAutoShape($objWriter, $shape, $shapeId);
             } elseif ($shape instanceof Group) {
                 $this->writeShapeGroup($objWriter, $shape, $shapeId);
             } elseif ($shape instanceof Comment) {
@@ -832,6 +835,108 @@ abstract class AbstractSlide extends AbstractDecoratorWriter
         $objWriter->endElement();
         // Return
         return $objWriter->getData();
+    }
+
+    /**
+     * Write AutoShape
+     *
+     * @param \PhpOffice\Common\XMLWriter $objWriter XML Writer
+     * @param \PhpOffice\PhpPresentation\Shape\AutoShape $shape
+     * @param  int $shapeId
+     */
+    protected function writeShapeAutoShape(XMLWriter $objWriter, AutoShape $shape, $shapeId)
+    {
+        // p:pic
+        $objWriter->startElement('p:pic');
+        // p:nvPicPr
+        $objWriter->startElement('p:nvPicPr');
+        // p:cNvPr
+        $objWriter->startElement('p:cNvPr');
+        $objWriter->writeAttribute('id', $shapeId);
+        $objWriter->writeAttribute('name', $shape->getName());
+        $objWriter->writeAttribute('descr', $shape->getDescription());
+        // a:hlinkClick
+        if ($shape->hasHyperlink()) {
+            $this->writeHyperlink($objWriter, $shape);
+        }
+        $objWriter->endElement();
+        // p:cNvPicPr
+        $objWriter->startElement('p:cNvPicPr');
+        // a:picLocks
+        $objWriter->startElement('a:picLocks');
+        $objWriter->writeAttribute('noChangeAspect', '1');
+        $objWriter->endElement();
+        $objWriter->endElement();
+        // p:nvPr
+        $objWriter->startElement('p:nvPr');
+        /**
+         * @link : https://github.com/stefslon/exportToPPTX/blob/master/exportToPPTX.m#L2128
+         */
+        if ($shape instanceof Media) {
+            // p:nvPr > a:videoFile
+            $objWriter->startElement('a:videoFile');
+            $objWriter->writeAttribute('r:link', $shape->relationId);
+            $objWriter->endElement();
+            // p:nvPr > p:extLst
+            $objWriter->startElement('p:extLst');
+            // p:nvPr > p:extLst > p:ext
+            $objWriter->startElement('p:ext');
+            $objWriter->writeAttribute('uri', '{DAA4B4D4-6D71-4841-9C94-3DE7FCFB9230}');
+            // p:nvPr > p:extLst > p:ext > p14:media
+            $objWriter->startElement('p14:media');
+            $objWriter->writeAttribute('r:embed', $shape->relationId);
+            $objWriter->writeAttribute('xmlns:p14', 'http://schemas.microsoft.com/office/powerpoint/2010/main');
+            // p:nvPr > p:extLst > p:ext > ##p14:media
+            $objWriter->endElement();
+            // p:nvPr > p:extLst > ##p:ext
+            $objWriter->endElement();
+            // p:nvPr > ##p:extLst
+            $objWriter->endElement();
+        }
+        // ##p:nvPr
+        $objWriter->endElement();
+        $objWriter->endElement();
+        // p:blipFill
+        $objWriter->startElement('p:blipFill');
+        // a:blip
+        $objWriter->startElement('a:blip');
+        $objWriter->writeAttribute('r:embed', $shape->relationId);
+        $objWriter->endElement();
+        // a:stretch
+        $objWriter->startElement('a:stretch');
+        $objWriter->writeElement('a:fillRect', null);
+        $objWriter->endElement();
+        $objWriter->endElement();
+        // p:spPr
+        $objWriter->startElement('p:spPr');
+        // a:xfrm
+        $objWriter->startElement('a:xfrm');
+        $objWriter->writeAttributeIf($shape->getRotation() != 0, 'rot', CommonDrawing::degreesToAngle($shape->getRotation()));
+        // a:off
+        $objWriter->startElement('a:off');
+        $objWriter->writeAttribute('x', CommonDrawing::pixelsToEmu($shape->getOffsetX()));
+        $objWriter->writeAttribute('y', CommonDrawing::pixelsToEmu($shape->getOffsetY()));
+        $objWriter->endElement();
+        // a:ext
+        $objWriter->startElement('a:ext');
+        $objWriter->writeAttribute('cx', CommonDrawing::pixelsToEmu($shape->getWidth()));
+        $objWriter->writeAttribute('cy', CommonDrawing::pixelsToEmu($shape->getHeight()));
+        $objWriter->endElement();
+        $objWriter->endElement();
+        // a:prstGeom
+        $objWriter->startElement('a:prstGeom');
+        $objWriter->writeAttribute('prst', 'rect');
+        // a:avLst
+        $objWriter->writeElement('a:avLst', null);
+        $objWriter->endElement();
+        if ($shape->getBorder()->getLineStyle() != Border::LINE_NONE) {
+            $this->writeBorder($objWriter, $shape->getBorder(), '');
+        }
+        if ($shape->getShadow()->isVisible()) {
+            $this->writeShadow($objWriter, $shape->getShadow());
+        }
+        $objWriter->endElement();
+        $objWriter->endElement();
     }
 
     /**
