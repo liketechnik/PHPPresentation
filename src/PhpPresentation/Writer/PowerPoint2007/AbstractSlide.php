@@ -846,96 +846,86 @@ abstract class AbstractSlide extends AbstractDecoratorWriter
      */
     protected function writeShapeAutoShape(XMLWriter $objWriter, AutoShape $shape, $shapeId)
     {
-        // p:pic
-        $objWriter->startElement('p:pic');
-        // p:nvPicPr
-        $objWriter->startElement('p:nvPicPr');
-        // p:cNvPr
+        // p:sp
+        $objWriter->startElement('p:sp');
+
+        // p:sp\p:nvSpPr
+        $objWriter->startElement('p:nvSpPr');
+        // p:sp\p:nvSpPr\p:cNvPr
         $objWriter->startElement('p:cNvPr');
         $objWriter->writeAttribute('id', $shapeId);
-        $objWriter->writeAttribute('name', $shape->getName());
-        $objWriter->writeAttribute('descr', $shape->getDescription());
-        // a:hlinkClick
-        if ($shape->hasHyperlink()) {
-            $this->writeHyperlink($objWriter, $shape);
-        }
+        $objWriter->writeAttribute('name', '');
+        $objWriter->writeAttribute('descr', '');
+        // p:sp\p:nvSpPr\p:cNvPr\
         $objWriter->endElement();
-        // p:cNvPicPr
-        $objWriter->startElement('p:cNvPicPr');
-        // a:picLocks
-        $objWriter->startElement('a:picLocks');
-        $objWriter->writeAttribute('noChangeAspect', '1');
+        // p:sp\p:nvSpPr\p:cNvSpPr
+        $objWriter->writeElement('p:cNvSpPr');
+        // p:sp\p:nvSpPr\p:nvPr
+        $objWriter->writeElement('p:nvPr');
+        // p:sp\p:nvSpPr\
         $objWriter->endElement();
-        $objWriter->endElement();
-        // p:nvPr
-        $objWriter->startElement('p:nvPr');
-        /**
-         * @link : https://github.com/stefslon/exportToPPTX/blob/master/exportToPPTX.m#L2128
-         */
-        if ($shape instanceof Media) {
-            // p:nvPr > a:videoFile
-            $objWriter->startElement('a:videoFile');
-            $objWriter->writeAttribute('r:link', $shape->relationId);
-            $objWriter->endElement();
-            // p:nvPr > p:extLst
-            $objWriter->startElement('p:extLst');
-            // p:nvPr > p:extLst > p:ext
-            $objWriter->startElement('p:ext');
-            $objWriter->writeAttribute('uri', '{DAA4B4D4-6D71-4841-9C94-3DE7FCFB9230}');
-            // p:nvPr > p:extLst > p:ext > p14:media
-            $objWriter->startElement('p14:media');
-            $objWriter->writeAttribute('r:embed', $shape->relationId);
-            $objWriter->writeAttribute('xmlns:p14', 'http://schemas.microsoft.com/office/powerpoint/2010/main');
-            // p:nvPr > p:extLst > p:ext > ##p14:media
-            $objWriter->endElement();
-            // p:nvPr > p:extLst > ##p:ext
-            $objWriter->endElement();
-            // p:nvPr > ##p:extLst
-            $objWriter->endElement();
-        }
-        // ##p:nvPr
-        $objWriter->endElement();
-        $objWriter->endElement();
-        // p:blipFill
-        $objWriter->startElement('p:blipFill');
-        // a:blip
-        $objWriter->startElement('a:blip');
-        $objWriter->writeAttribute('r:embed', $shape->relationId);
-        $objWriter->endElement();
-        // a:stretch
-        $objWriter->startElement('a:stretch');
-        $objWriter->writeElement('a:fillRect', null);
-        $objWriter->endElement();
-        $objWriter->endElement();
-        // p:spPr
+
+        // p:sp\p:spPr
         $objWriter->startElement('p:spPr');
-        // a:xfrm
+
+        // p:sp\p:spPr\a:xfrm
         $objWriter->startElement('a:xfrm');
         $objWriter->writeAttributeIf($shape->getRotation() != 0, 'rot', CommonDrawing::degreesToAngle($shape->getRotation()));
-        // a:off
+        // p:sp\p:spPr\a:xfrm\a:off
         $objWriter->startElement('a:off');
         $objWriter->writeAttribute('x', CommonDrawing::pixelsToEmu($shape->getOffsetX()));
         $objWriter->writeAttribute('y', CommonDrawing::pixelsToEmu($shape->getOffsetY()));
         $objWriter->endElement();
-        // a:ext
+        // p:sp\p:spPr\a:xfrm\a:ext
         $objWriter->startElement('a:ext');
         $objWriter->writeAttribute('cx', CommonDrawing::pixelsToEmu($shape->getWidth()));
         $objWriter->writeAttribute('cy', CommonDrawing::pixelsToEmu($shape->getHeight()));
         $objWriter->endElement();
+        // p:sp\p:spPr\a:xfrm\
         $objWriter->endElement();
-        // a:prstGeom
+
+        // p:sp\p:spPr\a:prstGeom
         $objWriter->startElement('a:prstGeom');
-        $objWriter->writeAttribute('prst', 'rect');
-        // a:avLst
-        $objWriter->writeElement('a:avLst', null);
+        $objWriter->writeAttribute('prst', $shape->getType());
+        // p:sp\p:spPr\a:prstGeom\a:avLst
+        $objWriter->writeElement('a:avLst');
+        // p:sp\p:spPr\a:prstGeom\
         $objWriter->endElement();
-        if ($shape->getBorder()->getLineStyle() != Border::LINE_NONE) {
-            $this->writeBorder($objWriter, $shape->getBorder(), '');
-        }
-        if ($shape->getShadow()->isVisible()) {
-            $this->writeShadow($objWriter, $shape->getShadow());
-        }
+        // Border
+        // $this->writeBorder($objWriter, $shape->getBorder(), '');
+        // Shadow
+        //$this->writeShadow($objWriter, $shape->getShadow());
+
+        // p:sp\p:spPr\
         $objWriter->endElement();
+
+        $objWriter->writeRaw('<p:style>
+            <a:lnRef idx="2">
+                <a:schemeClr val="accent1">
+                    <a:shade val="50000"/>
+                </a:schemeClr>
+            </a:lnRef>
+            <a:fillRef idx="1">
+                <a:schemeClr val="accent1"/>
+            </a:fillRef>
+            <a:effectRef idx="0">
+                <a:schemeClr val="accent1"/>
+            </a:effectRef>
+            <a:fontRef idx="minor">
+                <a:schemeClr val="lt1"/>
+            </a:fontRef>
+        </p:style>');
+
+        $objWriter->writeRaw('<p:txBody>
+            <a:bodyPr vertOverflow="clip" rtlCol="0" anchor="ctr"/>
+            <a:lstStyle/>
+            <a:p>
+                <a:pPr algn="ctr"/>
+                <a:endParaRPr lang="en-US" sz="1100"/>
+            </a:p>
+        </p:txBody>');
+
+        // p:sp\
         $objWriter->endElement();
     }
 
