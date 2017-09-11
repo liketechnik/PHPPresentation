@@ -111,7 +111,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
             try {
                 $oOLE->read($pFilename);
                 return true;
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
             }
         }
 
@@ -1345,7 +1345,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
         $size -= 4;
         // EncryptionHeader > AlgID
         $algID = self::getInt4d($oStream, $pos);
-        echo 'EncryptionHeader > AlgID :'.$algID.' ('.hexdec('0x00006801').' = 0x00006801 = RC4) -  ('.hexdec('0x0000660E').' = 0x0000660E = AES-128) - ('.hexdec('0x0000660F').' = 0x0000660F = AES-192) - ('.hexdec('0x00006610').' = 0x00006610 = AES-256)'. '<br />';
+        echo 'EncryptionHeader > AlgID :'.$algID.' ('.hexdec('0x00006801').' = 0x00006801 = RC4) -  (<strong>'.hexdec('0x0000660E').' = 0x0000660E = AES-128</strong>) - ('.hexdec('0x0000660F').' = 0x0000660F = AES-192) - ('.hexdec('0x00006610').' = 0x00006610 = AES-256)'. '<br />';
         $pos += 4;
         $size -= 4;
         // EncryptionHeader > AlgIDHash
@@ -1355,7 +1355,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
         $size -= 4;
         // EncryptionHeader > KeySize
         $keySize = self::getInt4d($oStream, $pos);
-        echo 'EncryptionHeader > KeySize : '.$keySize.  ' ('.hexdec('0x00000080').' = 0x00000080 = AES-128) - ('.hexdec('0x000000C0').' = 0x000000C0 = AES-192) - ('.hexdec('0x00000100').' = 0x00000100 = AES-256)'. '<br />';
+        echo 'EncryptionHeader > KeySize : '.$keySize.  ' (<strong>'.hexdec('0x00000080').' = 0x00000080 = AES-128</strong>) - ('.hexdec('0x000000C0').' = 0x000000C0 = AES-192) - ('.hexdec('0x00000100').' = 0x00000100 = AES-256)'. '<br />';
         $pos += 4;
         $size -= 4;
         // EncryptionHeader > ProviderType
@@ -1374,7 +1374,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
         for ($inc = 0 ; $inc <= $size ; $inc += 2) {
             $chr = self::getInt2d($oStream, $pos);
             $pos += 2;
-            if ($chr == 0) {
+            if ($chr === 0) {
                 break;
             }
             $CSPName .= chr($chr);
@@ -1438,7 +1438,7 @@ class PowerPoint2007 extends AbstractReader implements ReaderInterface
 
         $x36 = '';
         for($inc = 0 ; $inc < 64 ; $inc++) {
-            $x36 .= pack('H*', '36');
+            $x36 .= pack('H*', 0x36);
         }
         echo 'x36 (length : '.strlen($x36).')';
         hex_dump($x36);
