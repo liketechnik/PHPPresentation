@@ -27,6 +27,7 @@ use PhpOffice\PhpPresentation\Shape\RichText\Paragraph;
 use PhpOffice\PhpPresentation\Slide\Background\Image;
 use PhpOffice\PhpPresentation\Style\Bullet;
 use PhpOffice\PhpPresentation\Style\Color;
+use PhpOffice\PhpPresentation\Style\Fill;
 use PhpOffice\PhpPresentation\Style\Font;
 use PhpOffice\PhpPresentation\Style\Shadow;
 use PhpOffice\PhpPresentation\Style\Alignment;
@@ -174,7 +175,8 @@ class ODPresentation extends AbstractReader implements ReaderInterface
         );
         $oProperties = $this->oPhpPresentation->getDocumentProperties();
         foreach ($arrayProperties as $path => $property) {
-            if (is_object($oElement = $this->oXMLReader->getElement($path))) {
+            $oElement = $this->oXMLReader->getElement($path);
+            if ($oElement instanceof \DOMElement) {
                 if (in_array($property, array('setCreated', 'setModified'))) {
                     $oDateTime = new \DateTime();
                     $oDateTime->createFromFormat(\DateTime::W3C, $oElement->nodeValue);
@@ -212,7 +214,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
         $keyStyle = $nodeStyle->getAttribute('style:name');
 
         $nodeDrawingPageProps = $this->oXMLReader->getElement('style:drawing-page-properties', $nodeStyle);
-        if ($nodeDrawingPageProps) {
+        if ($nodeDrawingPageProps instanceof \DOMElement) {
             // Read Background Color
             if ($nodeDrawingPageProps->hasAttribute('draw:fill-color') && $nodeDrawingPageProps->getAttribute('draw:fill') == 'solid') {
                 $oBackground = new \PhpOffice\PhpPresentation\Slide\Background\Color();
@@ -235,7 +237,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
         }
 
         $nodeGraphicProps = $this->oXMLReader->getElement('style:graphic-properties', $nodeStyle);
-        if ($nodeGraphicProps) {
+        if ($nodeGraphicProps instanceof \DOMElement) {
             // Read Shadow
             if ($nodeGraphicProps->hasAttribute('draw:shadow') && $nodeGraphicProps->getAttribute('draw:shadow') == 'visible') {
                 $oShadow = new Shadow();
@@ -259,10 +261,30 @@ class ODPresentation extends AbstractReader implements ReaderInterface
                     $oShadow->setDistance(CommonDrawing::centimetersToPixels($distance));
                 }
             }
+            // Read Fill
+            if ($nodeGraphicProps->hasAttribute('draw:fill')) {
+                $value = $nodeGraphicProps->getAttribute('draw:fill');
+
+                switch ($value) {
+                    case 'none':
+                        $oFill = new Fill();
+                        $oFill->setFillType(Fill::FILL_NONE);
+                        break;
+                    case 'solid':
+                        $oFill = new Fill();
+                        $oFill->setFillType(Fill::FILL_SOLID);
+                        if ($nodeGraphicProps->hasAttribute('draw:fill-color')) {
+                            $oColor = new Color();
+                            $oColor->setRGB(substr($nodeGraphicProps->getAttribute('draw:fill-color'), 1));
+                            $oFill->setStartColor($oColor);
+                        }
+                        break;
+                }
+            }
         }
         
         $nodeTextProperties = $this->oXMLReader->getElement('style:text-properties', $nodeStyle);
-        if ($nodeTextProperties) {
+        if ($nodeTextProperties instanceof \DOMElement) {
             $oFont = new Font();
             if ($nodeTextProperties->hasAttribute('fo:color')) {
                 $oFont->getColor()->setRGB(substr($nodeTextProperties->getAttribute('fo:color'), -6));
@@ -279,7 +301,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
         }
 
         $nodeParagraphProps = $this->oXMLReader->getElement('style:paragraph-properties', $nodeStyle);
-        if ($nodeParagraphProps) {
+        if ($nodeParagraphProps instanceof \DOMElement) {
             $oAlignment = new Alignment();
             if ($nodeParagraphProps->hasAttribute('fo:text-align')) {
                 $oAlignment->setHorizontal($nodeParagraphProps->getAttribute('fo:text-align'));
@@ -301,7 +323,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
                 }
                 
                 $oNodeListProperties = $this->oXMLReader->getElement('style:list-level-properties', $oNodeListLevel);
-                if ($oNodeListProperties) {
+                if ($oNodeListProperties instanceof \DOMElement) {
                     if ($oNodeListProperties->hasAttribute('text:min-label-width')) {
                         $oAlignment->setIndent((int)round(CommonDrawing::centimetersToPixels(substr($oNodeListProperties->getAttribute('text:min-label-width'), 0, -2))));
                     }
@@ -312,7 +334,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
                     }
                 }
                 $oNodeTextProperties = $this->oXMLReader->getElement('style:text-properties', $oNodeListLevel);
-                if ($oNodeTextProperties) {
+                if ($oNodeTextProperties instanceof \DOMElement) {
                     if ($oNodeTextProperties->hasAttribute('fo:font-family')) {
                         $oBullet->setBulletFont($oNodeTextProperties->getAttribute('fo:font-family'));
                     }
@@ -328,6 +350,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
         $this->arrayStyles[$keyStyle] = array(
             'alignment' => isset($oAlignment) ? $oAlignment : null,
             'background' => isset($oBackground) ? $oBackground : null,
+            'fill' => isset($oFill) ? $oFill : null,
             'font' => isset($oFont) ? $oFont : null,
             'shadow' => isset($oShadow) ? $oShadow : null,
             'listStyle' => isset($arrayListStyle) ? $arrayListStyle : null,
@@ -380,7 +403,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
         $oShape->getShadow()->setVisible(false);
 
         $oNodeImage = $this->oXMLReader->getElement('draw:image', $oNodeFrame);
-        if ($oNodeImage) {
+        if ($oNodeImage instanceof \DOMElement) {
             if ($oNodeImage->hasAttribute('xlink:href')) {
                 $sFilename = $oNodeImage->getAttribute('xlink:href');
                 // svm = StarView Metafile
@@ -407,6 +430,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
             $keyStyle = $oNodeFrame->getAttribute('draw:style-name');
             if (isset($this->arrayStyles[$keyStyle])) {
                 $oShape->setShadow($this->arrayStyles[$keyStyle]['shadow']);
+                $oShape->setFill($this->arrayStyles[$keyStyle]['fill']);
             }
         }
         
@@ -455,18 +479,21 @@ class ODPresentation extends AbstractReader implements ReaderInterface
     {
         $oParagraph = $oShape->createParagraph();
         $oDomList = $this->oXMLReader->getElements('text:span', $oNodeParent);
-        if ($oDomList->length == 0) {
-            $this->readParagraphItem($oParagraph, $oNodeParent);
-        } else {
-            foreach ($oDomList as $oNodeRichTextElement) {
-                $this->readParagraphItem($oParagraph, $oNodeRichTextElement);
+        $oDomTextNodes = $this->oXMLReader->getElements('text()', $oNodeParent);
+        foreach ($oDomTextNodes as $oDomTextNode) {
+            if (trim($oDomTextNode->nodeValue) != '') {
+                $oTextRun = $oParagraph->createTextRun();
+                $oTextRun->setText(trim($oDomTextNode->nodeValue));
             }
+        }
+        foreach ($oDomList as $oNodeRichTextElement) {
+            $this->readParagraphItem($oParagraph, $oNodeRichTextElement);
         }
     }
     
     /**
      * Read Paragraph Item
-     * @param RichText $oShape
+     * @param Paragraph $oParagraph
      * @param \DOMElement $oNodeParent
      */
     protected function readParagraphItem(Paragraph $oParagraph, \DOMElement $oNodeParent)
@@ -481,7 +508,8 @@ class ODPresentation extends AbstractReader implements ReaderInterface
                     $oTextRun->setFont($this->arrayStyles[$keyStyle]['font']);
                 }
             }
-            if ($oTextRunLink = $this->oXMLReader->getElement('text:a', $oNodeParent)) {
+            $oTextRunLink = $this->oXMLReader->getElement('text:a', $oNodeParent);
+            if ($oTextRunLink instanceof \DOMElement) {
                 $oTextRun->setText($oTextRunLink->nodeValue);
                 if ($oTextRunLink->hasAttribute('xlink:href')) {
                     $oTextRun->getHyperlink()->setUrl($oTextRunLink->getAttribute('xlink:href'));
@@ -523,7 +551,7 @@ class ODPresentation extends AbstractReader implements ReaderInterface
         $oParagraph = $oShape->createParagraph();
         if ($oNodeParagraph->hasAttribute('text:style-name')) {
             $keyStyle = $oNodeParagraph->getAttribute('text:style-name');
-            if (isset($this->arrayStyles[$keyStyle])) {
+            if (isset($this->arrayStyles[$keyStyle]) && !empty($this->arrayStyles[$keyStyle]['listStyle'])) {
                 $oParagraph->setAlignment($this->arrayStyles[$keyStyle]['listStyle'][$this->levelParagraph]['alignment']);
                 $oParagraph->setBulletStyle($this->arrayStyles[$keyStyle]['listStyle'][$this->levelParagraph]['bullet']);
             }
