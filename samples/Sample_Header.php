@@ -54,7 +54,21 @@ define('IS_INDEX', SCRIPT_FILENAME == 'index');
 require_once __DIR__ . '/../src/PhpPresentation/Autoloader.php';
 Autoloader::register();
 
-require_once __DIR__ . '/../vendor/autoload.php';
+if (is_file(__DIR__. '/../../../../vendor/autoload.php')) {
+    require_once __DIR__ . '/../../../../vendor/autoload.php';
+} else {
+    throw new Exception ('Can not find the vendor folder!');
+}
+// do some checks to make sure the outputs are set correctly.
+if (is_dir(__DIR__.DIRECTORY_SEPARATOR.'results') === FALSE) {
+    throw new Exception ('The results folder is not present!');
+}
+if (is_writable(__DIR__.DIRECTORY_SEPARATOR.'results'.DIRECTORY_SEPARATOR) === FALSE) {
+    throw new Exception ('The results folder is not writable!');
+}
+if (is_writable(__DIR__.DIRECTORY_SEPARATOR) === FALSE) {
+    throw new Exception ('The samples folder is not writable!');
+}
 
 // Set writers
 $writers = array('PowerPoint2007' => 'pptx', 'ODPresentation' => 'odp');
@@ -516,14 +530,12 @@ class PhpPptTree
                 <?php endforeach; ?>
                 </ul>
                 <ul class="nav navbar-nav navbar-right">
-                    <li><a href="https://github.com/PHPOffice/PHPPresentation"><i class="fa fa-github fa-lg"
-                                                                                  title="GitHub"></i>&nbsp;</a></li>
-                    <li><a href="http://phppresentation.readthedocs.org/en/develop/"><i class="fa fa-book fa-lg"
-                                                                                        title="Docs"></i>&nbsp;</a></li>
-                    <li><a href="http://twitter.com/PHPOffice"><i class="fa fa-twitter fa-lg" title="Twitter"></i>&nbsp;
-                        </a></li>
+                    <li><a href="https://github.com/PHPOffice/PHPPresentation"><i class="fa fa-github fa-lg" title="GitHub"></i>&nbsp;</a></li>
+                    <li><a href="http://phppresentation.readthedocs.org/en/develop/"><i class="fa fa-book fa-lg" title="Docs"></i>&nbsp;</a></li>
+                    <li><a href="http://twitter.com/PHPOffice"><i class="fa fa-twitter fa-lg" title="Twitter"></i>&nbsp;</a></li>
                 </ul>
             </div>
         </div>
     </div>
-<?php echo $pageHeading; ?>
+</div>
+<?php echo $pageHeading;

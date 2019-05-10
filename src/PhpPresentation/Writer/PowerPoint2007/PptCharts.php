@@ -105,7 +105,7 @@ class PptCharts extends AbstractDecoratorWriter
 
         // c:hPercent
         $hPercent = $chart->getView3D()->getHeightPercent();
-        $objWriter->writeElementIf($hPercent != null, 'c:hPercent', 'val', $hPercent . '%');
+        $objWriter->writeElementIf($hPercent != null, 'c:hPercent', 'val', $hPercent);
 
         // c:rotY
         $objWriter->startElement('c:rotY');
@@ -2116,6 +2116,7 @@ class PptCharts extends AbstractDecoratorWriter
      * @param Chart\Axis $oAxis
      * @param $typeAxis
      * @param Chart\Type\AbstractType $typeChart
+     * @throws \Exception
      */
     protected function writeAxis(XMLWriter $objWriter, Chart\Axis $oAxis, $typeAxis, Chart\Type\AbstractType $typeChart)
     {
@@ -2322,7 +2323,7 @@ class PptCharts extends AbstractDecoratorWriter
 
             // c:lblOffset
             $objWriter->startElement('c:lblOffset');
-            $objWriter->writeAttribute('val', '100%');
+            $objWriter->writeAttribute('val', '100');
             $objWriter->endElement();
         }
 
@@ -2359,6 +2360,7 @@ class PptCharts extends AbstractDecoratorWriter
     /**
      * @param XMLWriter $objWriter
      * @param Gridlines $oGridlines
+     * @throws \Exception
      */
     protected function writeAxisGridlines(XMLWriter $objWriter, Gridlines $oGridlines)
     {
