@@ -21,9 +21,6 @@ use DirectoryIterator;
 use PhpOffice\Common\Adapter\Zip\ZipArchiveAdapter;
 use PhpOffice\PhpPresentation\HashTable;
 use PhpOffice\PhpPresentation\PhpPresentation;
-use PhpOffice\PhpPresentation\Shape\AbstractDrawing;
-use PhpOffice\PhpPresentation\Shape\Chart as ChartShape;
-use PhpOffice\PhpPresentation\Shape\Table;
 use PhpOffice\PhpPresentation\Writer\PowerPoint2007\LayoutPack\AbstractLayoutPack;
 use PhpOffice\PhpPresentation\Writer\PowerPoint2007\LayoutPack\PackDefault;
 
@@ -57,6 +54,7 @@ class PowerPoint2007 extends AbstractWriter implements WriterInterface
      * Create a new PowerPoint2007 file
      *
      * @param PhpPresentation $pPhpPresentation
+     * @throws \Exception
      */
     public function __construct(PhpPresentation $pPhpPresentation = null)
     {
@@ -104,6 +102,7 @@ class PowerPoint2007 extends AbstractWriter implements WriterInterface
         $oZip->open($pFilename);
 
         $oDir = new DirectoryIterator(dirname(__FILE__).DIRECTORY_SEPARATOR.'PowerPoint2007');
+        $arrayFiles = array();
         foreach ($oDir as $oFile) {
             if (!$oFile->isFile()) {
                 continue;

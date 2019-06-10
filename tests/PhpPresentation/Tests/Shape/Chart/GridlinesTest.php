@@ -3,8 +3,9 @@
 namespace PhpOffice\PhpPresentation\Tests\Shape\Chart;
 
 use PhpOffice\PhpPresentation\Shape\Chart\Gridlines;
+use PHPUnit\Framework\TestCase;
 
-class GridlinesTest extends \PHPUnit_Framework_TestCase
+class GridlinesTest extends TestCase
 {
     public function testConstruct()
     {
@@ -17,7 +18,7 @@ class GridlinesTest extends \PHPUnit_Framework_TestCase
     {
         $object = new Gridlines();
 
-        $oStub = $this->getMock('PhpOffice\PhpPresentation\Style\Outline');
+        $oStub = $this->getMockBuilder('PhpOffice\PhpPresentation\Style\Outline')->getMock();
 
         $this->assertInstanceOf('PhpOffice\PhpPresentation\Style\Outline', $object->getOutline());
         $this->assertInstanceOf('PhpOffice\PhpPresentation\Shape\Chart\Gridlines', $object->setOutline($oStub));

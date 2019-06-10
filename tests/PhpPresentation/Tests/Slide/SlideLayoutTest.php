@@ -18,13 +18,14 @@
 namespace PhpOffice\PhpPresentation\Tests;
 
 use PhpOffice\PhpPresentation\Slide\SlideLayout;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for PhpPresentation
  *
  * @coversDefaultClass PhpOffice\PhpPresentation\Slide\SlideLayout
  */
-class SlideLayoutTest extends \PHPUnit_Framework_TestCase
+class SlideLayoutTest extends TestCase
 {
     public function testBase()
     {
@@ -35,7 +36,7 @@ class SlideLayoutTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('\\ArrayObject', $object->getShapeCollection());
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Style\\ColorMap', $object->colorMap);
     }
-    
+
     public function testLayoutName()
     {
         // Mocks
@@ -49,5 +50,15 @@ class SlideLayoutTest extends \PHPUnit_Framework_TestCase
         $this->assertNull($object->getLayoutName());
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Slide\\SlideLayout', $object->setLayoutName($expectedLayoutName));
         $this->assertEquals($expectedLayoutName, $object->getLayoutName());
+    }
+
+    public function testSlideMaster()
+    {
+        // Mocks
+        $mockSlideMaster = $this->getMockForAbstractClass('PhpOffice\PhpPresentation\Slide\SlideMaster');
+
+        $object = new SlideLayout($mockSlideMaster);
+
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Slide\\SlideMaster', $object->getSlideMaster());
     }
 }

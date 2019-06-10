@@ -103,6 +103,26 @@ class Color implements ComparableInterface
     }
 
     /**
+     * Set the alpha % of the ARGB
+     * @param int $alpha
+     * @return $this
+     */
+    public function setAlpha($alpha = 100)
+    {
+        if ($alpha < 0) {
+            $alpha = 0;
+        }
+        if ($alpha > 100) {
+            $alpha = 100;
+        }
+        $alpha = round(($alpha / 100) * 255);
+        $alpha = dechex($alpha);
+        $alpha = str_pad($alpha, 2, '0', STR_PAD_LEFT);
+        $this->argb = $alpha . substr($this->argb, 2);
+        return $this;
+    }
+
+    /**
      * Get RGB
      *
      * @return string
@@ -119,15 +139,19 @@ class Color implements ComparableInterface
     /**
      * Set RGB
      *
-     * @param  string                    $pValue
+     * @param  string $pValue
+     * @param  string $pAlpha
      * @return \PhpOffice\PhpPresentation\Style\Color
      */
-    public function setRGB($pValue = '000000')
+    public function setRGB($pValue = '000000', $pAlpha = 'FF')
     {
         if ($pValue == '') {
             $pValue = '000000';
         }
-        $this->argb = 'FF' . $pValue;
+        if ($pAlpha == '') {
+            $pAlpha = 'FF';
+        }
+        $this->argb = $pAlpha . $pValue;
 
         return $this;
     }

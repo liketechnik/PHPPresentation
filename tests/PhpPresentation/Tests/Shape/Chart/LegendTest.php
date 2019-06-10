@@ -22,13 +22,14 @@ use PhpOffice\PhpPresentation\Style\Alignment;
 use PhpOffice\PhpPresentation\Style\Border;
 use PhpOffice\PhpPresentation\Style\Fill;
 use PhpOffice\PhpPresentation\Style\Font;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for Legend element
  *
  * @coversDefaultClass PhpOffice\PhpPresentation\Shape\Chart\Legend
  */
-class LegendTest extends \PHPUnit_Framework_TestCase
+class LegendTest extends TestCase
 {
     public function testConstruct()
     {
@@ -48,6 +49,24 @@ class LegendTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Style\\Alignment', $object->getAlignment());
     }
 
+    public function testBorder()
+    {
+        $object = new Legend();
+
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Style\\Border', $object->getBorder());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Legend', $object->setBorder(new Border()));
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Style\\Border', $object->getBorder());
+    }
+
+    public function testFill()
+    {
+        $object = new Legend();
+
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Style\\Fill', $object->getFill());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Legend', $object->setFill(new Fill()));
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Style\\Fill', $object->getFill());
+    }
+
     public function testFont()
     {
         $object = new Legend();
@@ -61,7 +80,7 @@ class LegendTest extends \PHPUnit_Framework_TestCase
     public function testHashIndex()
     {
         $object = new Legend();
-        $value = rand(1, 100);
+        $value = mt_rand(1, 100);
 
         $this->assertEmpty($object->getHashIndex());
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Legend', $object->setHashIndex($value));
@@ -71,7 +90,7 @@ class LegendTest extends \PHPUnit_Framework_TestCase
     public function testHeight()
     {
         $object = new Legend();
-        $value = rand(0, 100);
+        $value = mt_rand(0, 100);
 
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Legend', $object->setHeight());
         $this->assertEquals(0, $object->getHeight());
@@ -82,7 +101,7 @@ class LegendTest extends \PHPUnit_Framework_TestCase
     public function testOffsetX()
     {
         $object = new Legend();
-        $value = rand(0, 100);
+        $value = mt_rand(0, 100);
 
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Legend', $object->setOffsetX());
         $this->assertEquals(0, $object->getOffsetX());
@@ -93,7 +112,7 @@ class LegendTest extends \PHPUnit_Framework_TestCase
     public function testOffsetY()
     {
         $object = new Legend();
-        $value = rand(0, 100);
+        $value = mt_rand(0, 100);
 
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Legend', $object->setOffsetY());
         $this->assertEquals(0, $object->getOffsetY());
@@ -126,7 +145,7 @@ class LegendTest extends \PHPUnit_Framework_TestCase
     public function testWidth()
     {
         $object = new Legend();
-        $value = rand(0, 100);
+        $value = mt_rand(0, 100);
 
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Legend', $object->setWidth());
         $this->assertEquals(0, $object->getWidth());

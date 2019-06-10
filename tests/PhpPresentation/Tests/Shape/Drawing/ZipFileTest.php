@@ -18,13 +18,14 @@
 namespace PhpOffice\PhpPresentation\Tests\Shape\Drawing;
 
 use PhpOffice\PhpPresentation\Shape\Drawing\ZipFile;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for Drawing element
  *
  * @coversDefaultClass PhpOffice\PhpPresentation\Shape\Drawing
  */
-class ZipFileTest extends \PHPUnit_Framework_TestCase
+class ZipFileTest extends TestCase
 {
     protected $fileOk;
     protected $fileKoZip;
@@ -33,6 +34,8 @@ class ZipFileTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         parent::setUp();
+
+        DrawingTest::$getimagesizefromstringExists = true;
 
         $this->fileOk = 'zip://'.PHPPRESENTATION_TESTS_BASE_DIR.DIRECTORY_SEPARATOR.'resources'.DIRECTORY_SEPARATOR.'files'.DIRECTORY_SEPARATOR.'Sample_01_Simple.pptx#ppt/media/phppowerpoint_logo1.gif';
         $this->fileKoZip = 'zip://'.PHPPRESENTATION_TESTS_BASE_DIR.DIRECTORY_SEPARATOR.'fileNotExist.pptx#ppt/media/phppowerpoint_logo1.gif';
@@ -57,8 +60,22 @@ class ZipFileTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('gif', $oDrawing->getExtension());
     }
 
+    /**
+     * @requires PHP 5.4
+     */
     public function testMimeType()
     {
+        $oDrawing = new ZipFile();
+        $oDrawing->setPath($this->fileOk);
+        $this->assertEquals('image/gif', $oDrawing->getMimeType());
+    }
+
+    /**
+     * @requires PHP 5.4
+     */
+    public function testMimeTypeFunctionNotExists()
+    {
+        DrawingTest::$getimagesizefromstringExists = false;
         $oDrawing = new ZipFile();
         $oDrawing->setPath($this->fileOk);
         $this->assertEquals('image/gif', $oDrawing->getMimeType());

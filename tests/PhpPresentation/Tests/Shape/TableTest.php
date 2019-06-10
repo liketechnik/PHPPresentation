@@ -18,19 +18,30 @@
 namespace PhpOffice\PhpPresentation\Tests\Shape;
 
 use PhpOffice\PhpPresentation\Shape\Table;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for Table element
  *
  * @coversDefaultClass PhpOffice\PhpPresentation\Shape\Table
  */
-class TableTest extends \PHPUnit_Framework_TestCase
+class TableTest extends TestCase
 {
     public function testConstruct()
     {
         $object = new Table();
         $this->assertEmpty($object->getRows());
         $this->assertFalse($object->isResizeProportional());
+    }
+
+    public function testNumColums()
+    {
+        $value = mt_rand(1, 100);
+        $object = new Table();
+
+        $this->assertEquals(1, $object->getNumColumns());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Table', $object->setNumColumns($value));
+        $this->assertEquals($value, $object->getNumColumns());
     }
 
     public function testRows()

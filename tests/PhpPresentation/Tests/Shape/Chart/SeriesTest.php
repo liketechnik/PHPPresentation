@@ -22,13 +22,14 @@ use PhpOffice\PhpPresentation\Shape\Chart\Series;
 use PhpOffice\PhpPresentation\Style\Fill;
 use PhpOffice\PhpPresentation\Style\Font;
 use PhpOffice\PhpPresentation\Style\Outline;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for Series element
  *
  * @coversDefaultClass PhpOffice\PhpPresentation\Shape\Chart\Series
  */
-class SeriesTest extends \PHPUnit_Framework_TestCase
+class SeriesTest extends TestCase
 {
     public function testConstruct()
     {
@@ -43,22 +44,23 @@ class SeriesTest extends \PHPUnit_Framework_TestCase
         $this->assertEmpty($object->getValues());
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Marker', $object->getMarker());
         $this->assertNull($object->getOutline());
+        $this->assertFalse($object->hasShowLegendKey());
     }
-    
+
     public function testDataLabelNumFormat()
     {
         $object = new Series();
-        
+
         $this->assertEmpty($object->getDlblNumFormat());
         $this->assertFalse($object->hasDlblNumFormat());
-        
+
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setDlblNumFormat('#%'));
-        
+
         $this->assertEquals('#%', $object->getDlblNumFormat());
         $this->assertTrue($object->hasDlblNumFormat());
-        
+
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setDlblNumFormat());
-        
+
         $this->assertEmpty($object->getDlblNumFormat());
         $this->assertFalse($object->hasDlblNumFormat());
     }
@@ -96,7 +98,7 @@ class SeriesTest extends \PHPUnit_Framework_TestCase
     public function testHashIndex()
     {
         $object = new Series();
-        $value = rand(1, 100);
+        $value = mt_rand(1, 100);
 
         $this->assertEmpty($object->getHashIndex());
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setHashIndex($value));
@@ -155,6 +157,21 @@ class SeriesTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($object->hasShowLeaderLines());
     }
 
+    public function testShowLegendKey()
+    {
+        $object = new Series();
+
+        $this->assertFalse($object->hasShowLegendKey());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setShowLegendKey(true));
+        $this->assertTrue($object->hasShowLegendKey());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setShowLegendKey(false));
+        $this->assertFalse($object->hasShowLegendKey());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setShowLegendKey(1));
+        $this->assertTrue($object->hasShowLegendKey());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setShowLegendKey(0));
+        $this->assertFalse($object->hasShowLegendKey());
+    }
+
     public function testShowPercentage()
     {
         $object = new Series();
@@ -162,6 +179,19 @@ class SeriesTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setShowPercentage(true));
         $this->assertTrue($object->hasShowPercentage());
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setShowPercentage(false));
+        $this->assertFalse($object->hasShowPercentage());
+    }
+
+    public function testShowSeparator()
+    {
+        $value = ';';
+        $object = new Series();
+
+        $this->assertFalse($object->hasShowSeparator());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setSeparator($value));
+        $this->assertEquals($value, $object->getSeparator());
+        $this->assertTrue($object->hasShowSeparator());
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->setSeparator(''));
         $this->assertFalse($object->hasShowPercentage());
     }
 
@@ -214,5 +244,15 @@ class SeriesTest extends \PHPUnit_Framework_TestCase
         $this->assertCount(count($array), $object->getValues());
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $object->addValue(4, 'e'));
         $this->assertCount(count($array) + 1, $object->getValues());
+    }
+
+    public function testClone()
+    {
+        $object = new Series();
+        $object->setOutline(new Outline());
+        $clone = clone $object;
+
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Chart\\Series', $clone);
+        $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Style\\Outline', $clone->getOutline());
     }
 }

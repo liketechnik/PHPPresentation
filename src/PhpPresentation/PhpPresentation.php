@@ -190,6 +190,7 @@ class PhpPresentation
      * Create slide and add it to this presentation
      *
      * @return \PhpOffice\PhpPresentation\Slide
+     * @throws \Exception
      */
     public function createSlide()
     {
@@ -223,9 +224,8 @@ class PhpPresentation
     {
         if ($index > count($this->slideCollection) - 1) {
             throw new \Exception("Slide index is out of bounds.");
-        } else {
-            array_splice($this->slideCollection, $index, 1);
         }
+        array_splice($this->slideCollection, $index, 1);
 
         return $this;
     }
@@ -241,9 +241,8 @@ class PhpPresentation
     {
         if ($index > count($this->slideCollection) - 1) {
             throw new \Exception("Slide index is out of bounds.");
-        } else {
-            return $this->slideCollection[$index];
         }
+        return $this->slideCollection[$index];
     }
 
     /**
@@ -306,9 +305,8 @@ class PhpPresentation
     {
         if ($index > count($this->slideCollection) - 1) {
             throw new \Exception("Active slide index is out of bounds.");
-        } else {
-            $this->activeSlideIndex = $index;
         }
+        $this->activeSlideIndex = $index;
 
         return $this->getActiveSlide();
     }
@@ -323,6 +321,8 @@ class PhpPresentation
     public function addExternalSlide(Slide $slide)
     {
         $slide->rebindParent($this);
+
+        $this->addMasterSlide($slide->getSlideLayout()->getSlideMaster());
 
         return $this->addSlide($slide);
     }
@@ -341,6 +341,7 @@ class PhpPresentation
      * Create a masterslide and add it to this presentation
      *
      * @return \PhpOffice\PhpPresentation\Slide\SlideMaster
+     * @throws \Exception
      */
     public function createMasterSlide()
     {
@@ -353,8 +354,8 @@ class PhpPresentation
      * Add masterslide
      *
      * @param  \PhpOffice\PhpPresentation\Slide\SlideMaster $slide
+     * @return \PhpOffice\PhpPresentation\Slide\SlideMaster
      * @throws \Exception
-     * @retun \PhpOffice\PhpPresentation\Slide\SlideMaster
      */
     public function addMasterSlide(SlideMaster $slide = null)
     {
@@ -367,6 +368,7 @@ class PhpPresentation
      * Copy presentation (!= clone!)
      *
      * @return PhpPresentation
+     * @throws \Exception
      */
     public function copy()
     {
@@ -384,7 +386,7 @@ class PhpPresentation
     /**
      * Mark a document as final
      * @param bool $state
-     * @return PhpPresentation
+     * @return PresentationProperties
      * @deprecated for getPresentationProperties()->markAsFinal()
      */
     public function markAsFinal($state = true)
@@ -405,10 +407,10 @@ class PhpPresentation
     /**
      * Set the zoom of the document (in percentage)
      * @param float $zoom
-     * @return PhpPresentation
+     * @return PresentationProperties
      * @deprecated for getPresentationProperties()->setZoom()
      */
-    public function setZoom($zoom = 1)
+    public function setZoom($zoom = 1.0)
     {
         return $this->getPresentationProperties()->setZoom($zoom);
     }

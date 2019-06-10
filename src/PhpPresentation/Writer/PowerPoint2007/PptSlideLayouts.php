@@ -12,6 +12,7 @@ class PptSlideLayouts extends AbstractSlide
 {
     /**
      * @return \PhpOffice\Common\Adapter\Zip\ZipInterface
+     * @throws \Exception
      */
     public function render()
     {
@@ -147,7 +148,7 @@ class PptSlideLayouts extends AbstractSlide
         $objWriter->endElement();
 
         if (!is_null($pSlideLayout->getTransition())) {
-            $this->writeTransition($objWriter, $pSlideLayout->getTransition());
+            $this->writeSlideTransition($objWriter, $pSlideLayout->getTransition());
         }
 
         // p:sldLayout\

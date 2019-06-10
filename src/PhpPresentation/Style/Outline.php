@@ -31,8 +31,9 @@ class Outline
      */
     protected $width;
 
+
     /**
-     * @return void
+     * Outline constructor.
      */
     public function __construct()
     {

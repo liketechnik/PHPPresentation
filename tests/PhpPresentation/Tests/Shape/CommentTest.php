@@ -18,13 +18,14 @@
 namespace PhpOffice\PhpPresentation\Tests\Shape;
 
 use PhpOffice\PhpPresentation\Shape\Comment;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for Chart element
  *
  * @coversDefaultClass PhpOffice\PhpPresentation\Shape\Comment
  */
-class CommentTest extends \PHPUnit_Framework_TestCase
+class CommentTest extends TestCase
 {
     public function testConstruct()
     {
@@ -41,7 +42,7 @@ class CommentTest extends \PHPUnit_Framework_TestCase
     {
         $object = new Comment();
 
-        $oStub = $this->getMock('PhpOffice\PhpPresentation\Shape\Comment\Author');
+        $oStub = $this->getMockBuilder('PhpOffice\PhpPresentation\Shape\Comment\Author')->getMock();
 
         $this->assertNull($object->getAuthor());
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Shape\\Comment', $object->setAuthor($oStub));
