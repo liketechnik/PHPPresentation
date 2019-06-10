@@ -18,13 +18,14 @@
 namespace PhpOffice\PhpPresentation\Tests\Style;
 
 use PhpOffice\PhpPresentation\Style\Color;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for PhpPresentation
  *
  * @coversDefaultClass PhpOffice\PhpPresentation\PhpPresentation
  */
-class ColorTest extends \PHPUnit_Framework_TestCase
+class ColorTest extends TestCase
 {
     /**
      * Test create new instance
@@ -42,7 +43,7 @@ class ColorTest extends \PHPUnit_Framework_TestCase
      */
     public function testAlpha()
     {
-        $randAlpha = rand(0, 100);
+        $randAlpha = mt_rand(0, 100);
         $object = new Color();
         $this->assertInstanceOf('PhpOffice\\PhpPresentation\\Style\\Color', $object->setARGB());
         $this->assertEquals(100, $object->getAlpha());
@@ -94,7 +95,7 @@ class ColorTest extends \PHPUnit_Framework_TestCase
     public function testSetGetHashIndex()
     {
         $object = new Color();
-        $value = rand(1, 100);
+        $value = mt_rand(1, 100);
         $object->setHashIndex($value);
         $this->assertEquals($value, $object->getHashIndex());
     }

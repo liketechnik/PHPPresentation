@@ -19,13 +19,14 @@ namespace PhpOffice\PhpPresentation\Tests\Shape\Chart\Type;
 
 use PhpOffice\PhpPresentation\Shape\Chart\Type\Doughnut;
 use PhpOffice\PhpPresentation\Shape\Chart\Series;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Test class for Doughnut element
  *
  * @coversDefaultClass PhpOffice\PhpPresentation\Shape\Chart\Type\Doughnut
  */
-class DoughnutTest extends \PHPUnit_Framework_TestCase
+class DoughnutTest extends TestCase
 {
     public function testData()
     {
@@ -47,7 +48,7 @@ class DoughnutTest extends \PHPUnit_Framework_TestCase
 
     public function testHoleSize()
     {
-        $rand = rand(10, 90);
+        $rand = mt_rand(10, 90);
         $object = new Doughnut();
 
         $this->assertEquals(50, $object->getHoleSize());
